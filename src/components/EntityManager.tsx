@@ -155,6 +155,7 @@ export default function EntityManager({
   }
 
   const tableFields = config.fields.filter((f) => f.showInTable);
+  const showCreatedBy = records.length > 0 && records[0].createdBy !== undefined;
 
   return (
     <div>
@@ -181,6 +182,9 @@ export default function EntityManager({
                     {f.label}
                   </th>
                 ))}
+                {showCreatedBy && (
+                  <th className="px-4 py-2 text-left font-medium">Người tạo</th>
+                )}
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -192,6 +196,11 @@ export default function EntityManager({
                       {formatCell(record, f)}
                     </td>
                   ))}
+                  {showCreatedBy && (
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap text-xs">
+                      {record.createdBy?.name ?? "—"}
+                    </td>
+                  )}
                   <td className="px-4 py-2 text-right whitespace-nowrap">
                     <button
                       className="text-brand-600 hover:underline text-xs mr-3"
