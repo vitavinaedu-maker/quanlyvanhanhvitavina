@@ -1,0 +1,355 @@
+// Vita Vina ERP — schema covering CRM, Du học, Du học nghề, Nhân sự,
+// Đối tác, Tài chính, Kinh doanh, Marketing tự động, Kho (hồ sơ + tồn kho).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  ADMIN // Toàn quyền hệ thống
+  MANAGER // Quản lý phòng ban
+  STAFF // Nhân viên
+}
+
+enum ProgramType {
+  DU_HOC // Du học
+  DU_HOC_NGHE // Du học nghề
+}
+
+enum LeadStage {
+  MOI // Mới
+  DA_LIEN_HE // Đã liên hệ
+  DANG_TU_VAN // Đang tư vấn
+  CHOT // Chốt / chuyển hồ sơ
+  HUY // Huỷ / không tiềm năng
+}
+
+enum StudentStatus {
+  TIEP_NHAN // Tiếp nhận hồ sơ
+  HOAN_THIEN_HO_SO // Hoàn thiện hồ sơ
+  NOP_HO_SO // Nộp hồ sơ / trường
+  CHO_VISA // Chờ visa
+  DA_VISA // Đã có visa
+  CHUAN_BI_XUAT_CANH // Chuẩn bị xuất cảnh
+  DA_XUAT_CANH // Đã xuất cảnh
+  DUNG // Dừng / huỷ hồ sơ
+}
+
+enum DocumentStatus {
+  THIEU // Thiếu
+  DA_NOP // Đã nộp
+  DA_DUYET // Đã duyệt
+  TU_CHOI // Từ chối, cần bổ sung
+}
+
+enum TaskStatus {
+  CAN_LAM // Cần làm
+  DANG_LAM // Đang làm
+  HOAN_THANH // Hoàn thành
+  QUA_HAN // Quá hạn
+}
+
+enum TaskPriority {
+  THAP
+  BINH_THUONG
+  CAO
+  KHAN_CAP
+}
+
+enum PartnerType {
+  TRUONG_DOI_TAC // Trường / cơ sở đào tạo nước ngoài
+  DAI_LY // Đại lý / cộng tác viên
+  NHA_CUNG_CAP // Nhà cung cấp dịch vụ
+}
+
+enum PartnerStatus {
+  DANG_HOP_TAC
+  TAM_NGUNG
+  NGUNG_HOP_TAC
+}
+
+enum InvoiceType {
+  HOC_PHI
+  PHI_DICH_VU
+  PHI_VISA
+  KHAC
+}
+
+enum InvoiceStatus {
+  CHUA_THANH_TOAN
+  THANH_TOAN_MOT_PHAN
+  DA_THANH_TOAN
+  QUA_HAN
+}
+
+enum PaymentMethod {
+  TIEN_MAT
+  CHUYEN_KHOAN
+  THE
+  KHAC
+}
+
+enum DealStage {
+  TIEM_NANG
+  DANG_DAM_PHAN
+  DA_CHOT
+  THAT_BAI
+}
+
+enum CampaignChannel {
+  ZALO_OA
+  EMAIL
+  SMS
+  FACEBOOK
+  KHAC
+}
+
+enum CampaignStatus {
+  NHAP
+  DANG_CHAY
+  TAM_DUNG
+  KET_THUC
+}
+
+enum InventoryTxnType {
+  NHAP // Nhập kho
+  XUAT // Xuất kho
+}
+
+// ---------- Core: Departments, Users, Employees ----------
+
+model Department {
+  id        String     @id @default(cuid())
+  code      String     @unique // CRM, DU_HOC, DU_HOC_NGHE, NHAN_SU, DOI_TAC, TAI_CHINH, KINH_DOANH, MARKETING, KHO
+  name      String
+  employees Employee[]
+  tasks     Task[]
+  createdAt DateTime   @default(now())
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         Role       @default(STAFF)
+  active       Boolean    @default(true)
+  employee     Employee?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Employee {
+  id           String       @id @default(cuid())
+  userId       String?      @unique
+  user         User?        @relation(fields: [userId], references: [id])
+  name         String
+  email        String?
+  phone        String?
+  position     String?
+  departmentId String?
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  status       String       @default("DANG_LAM_VIEC")
+  hireDate     DateTime?
+  createdAt    DateTime     @default(now())
+
+  managedCenters   Center[]        @relation("CenterManager")
+  assignedLeads    Lead[]          @relation("LeadAssignee")
+  assignedStudents Student[]       @relation("StudentAssignee")
+  tasks            Task[]          @relation("TaskAssignee")
+  deals            Deal[]          @relation("DealOwner")
+  inventoryTxns    InventoryTransaction[] @relation("TxnEmployee")
+}
+
+// ---------- Đối tác & Trung tâm ----------
+
+model Partner {
+  id            String        @id @default(cuid())
+  name          String
+  type          PartnerType
+  country       String?
+  contactName   String?
+  contactEmail  String?
+  contactPhone  String?
+  status        PartnerStatus @default(DANG_HOP_TAC)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  students      Student[]
+}
+
+model Center {
+  id          String       @id @default(cuid())
+  name        String
+  programType ProgramType
+  address     String?
+  phone       String?
+  managerId   String?
+  manager     Employee?    @relation("CenterManager", fields: [managerId], references: [id])
+  status      String       @default("HOAT_DONG")
+  createdAt   DateTime     @default(now())
+  students    Student[]
+}
+
+// ---------- CRM: Leads ----------
+
+model Lead {
+  id           String      @id @default(cuid())
+  name         String
+  phone        String
+  email        String?
+  source       String?
+  programType  ProgramType
+  stage        LeadStage   @default(MOI)
+  assigneeId   String?
+  assignee     Employee?   @relation("LeadAssignee", fields: [assigneeId], references: [id])
+  notes        String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  convertedStudent Student?
+}
+
+// ---------- Du học / Du học nghề: học viên & hồ sơ ----------
+
+model Student {
+  id          String         @id @default(cuid())
+  leadId      String?        @unique
+  lead        Lead?          @relation(fields: [leadId], references: [id])
+  name        String
+  dob         DateTime?
+  phone       String?
+  email       String?
+  programType ProgramType
+  status      StudentStatus  @default(TIEP_NHAN)
+  partnerId   String?
+  partner     Partner?       @relation(fields: [partnerId], references: [id])
+  centerId    String?
+  center      Center?        @relation(fields: [centerId], references: [id])
+  assigneeId  String?
+  assignee    Employee?      @relation("StudentAssignee", fields: [assigneeId], references: [id])
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  documents   DocumentItem[]
+  invoices    Invoice[]
+  deals       Deal[]
+  tasks       Task[]
+}
+
+model DocumentItem {
+  id        String         @id @default(cuid())
+  studentId String
+  student   Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  name      String // Hộ chiếu, Bằng cấp, Học bạ, Chứng chỉ tiếng Đức...
+  status    DocumentStatus @default(THIEU)
+  dueDate   DateTime?
+  notes     String?
+  updatedAt DateTime       @updatedAt
+}
+
+// ---------- Nhân sự: công việc / workflow ----------
+
+model Task {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+  departmentId String?
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  assigneeId   String?
+  assignee     Employee?    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  studentId    String?
+  student      Student?     @relation(fields: [studentId], references: [id])
+  status       TaskStatus   @default(CAN_LAM)
+  priority     TaskPriority @default(BINH_THUONG)
+  dueDate      DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+// ---------- Tài chính ----------
+
+model Invoice {
+  id         String        @id @default(cuid())
+  studentId  String
+  student    Student       @relation(fields: [studentId], references: [id])
+  type       InvoiceType
+  amount     Decimal       @db.Decimal(14, 2)
+  status     InvoiceStatus @default(CHUA_THANH_TOAN)
+  issuedDate DateTime      @default(now())
+  dueDate    DateTime?
+  notes      String?
+  payments   Payment[]
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  invoiceId String
+  invoice   Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount    Decimal       @db.Decimal(14, 2)
+  method    PaymentMethod @default(CHUYEN_KHOAN)
+  paidAt    DateTime      @default(now())
+  notes     String?
+}
+
+// ---------- Kinh doanh ----------
+
+model Deal {
+  id         String    @id @default(cuid())
+  studentId  String?
+  student    Student?  @relation(fields: [studentId], references: [id])
+  ownerId    String?
+  owner      Employee? @relation("DealOwner", fields: [ownerId], references: [id])
+  value      Decimal   @db.Decimal(14, 2)
+  stage      DealStage @default(TIEM_NANG)
+  closeDate  DateTime?
+  notes      String?
+  createdAt  DateTime  @default(now())
+}
+
+// ---------- Marketing tự động ----------
+
+model Campaign {
+  id         String          @id @default(cuid())
+  name       String
+  channel    CampaignChannel
+  status     CampaignStatus  @default(NHAP)
+  startDate  DateTime?
+  endDate    DateTime?
+  audience   String?
+  content    String?
+  stats      Json?
+  createdAt  DateTime        @default(now())
+}
+
+// ---------- Kho: tồn kho vật lý ----------
+
+model InventoryItem {
+  id           String                 @id @default(cuid())
+  name         String
+  sku          String                 @unique
+  unit         String                 @default("cái")
+  quantity     Int                    @default(0)
+  minQuantity  Int                    @default(0)
+  location     String?
+  createdAt    DateTime               @default(now())
+  transactions InventoryTransaction[]
+}
+
+model InventoryTransaction {
+  id         String            @id @default(cuid())
+  itemId     String
+  item       InventoryItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type       InventoryTxnType
+  quantity   Int
+  reason     String?
+  employeeId String?
+  employee   Employee?         @relation("TxnEmployee", fields: [employeeId], references: [id])
+  createdAt  DateTime          @default(now())
+}

@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Type check & build
+        run: npm run build
+        env:
+          # DATABASE_URL không cần kết nối thật cho bước build (Next.js chỉ prerender các trang tĩnh),
+          # nhưng Prisma Client cần biến này tồn tại để generate/khởi tạo.
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/db?schema=public"
+          AUTH_SECRET: "ci-build-secret"
