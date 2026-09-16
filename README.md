@@ -20,11 +20,41 @@ từ cấu trúc nghiệp vụ của MOKACO ([mokaco.vn](https://mokaco.vn/)), b
 - **Next.js 14** (App Router, TypeScript) — vừa là backend (API routes) vừa là frontend
 - **PostgreSQL + Prisma ORM** — cơ sở dữ liệu quan hệ
 - **Tailwind CSS** — giao diện
-- Xác thực bằng JWT lưu trong cookie httpOnly (không dùng dịch vụ ngoài), phân quyền theo vai trò
-  `ADMIN` / `MANAGER` / `STAFF` ở cấp module (xem `src/lib/rbac.ts`)
+- Xác thực bằng JWT lưu trong cookie httpOnly (không dùng dịch vụ ngoài) — nhiều tài khoản có thể
+  đăng nhập & thao tác đồng thời, dữ liệu dùng chung một PostgreSQL trung tâm nên luôn đồng bộ
+  real-time giữa mọi người dùng (không có bản sao dữ liệu riêng theo máy/tài khoản)
 - Hầu hết các module dùng chung một cơ chế CRUD tổng quát (`src/lib/entities.ts` +
   `src/components/EntityManager.tsx` + `src/app/api/data/[entity]`) để thêm/sửa/xoá dữ liệu —
   giúp mở rộng thêm trường hoặc module mới nhanh chóng, nhất quán.
+
+## Đa người dùng & phân quyền (RBAC)
+
+Hệ thống hỗ trợ nhiều tài khoản đăng nhập đồng thời, mỗi tài khoản (`User`) có thể gắn với một
+nhân viên (`Employee`) qua trường **Tài khoản đăng nhập** ở màn hình Nhân sự — đây là bước bắt
+buộc để tính năng phân quyền theo dữ liệu bên dưới hoạt động đúng.
+
+Có **2 lớp phân quyền**, đều kiểm tra ở tầng API (không chỉ ẩn menu ở giao diện):
+
+1. **Theo module** (`src/lib/rbac.ts`) — vai trò nào được vào phân hệ nào. Vd. chỉ `ADMIN` được
+   vào **Cài đặt**; `Tài chính`, `Nhân sự` chỉ `ADMIN`/`MANAGER`.
+2. **Theo dữ liệu / theo hàng** (`src/lib/scope.ts`) — áp dụng cho Lead (CRM), Học viên, Công việc,
+   Cơ hội kinh doanh (đều có "người phụ trách"):
+   - `STAFF` chỉ thấy và sửa được bản ghi của chính mình, hoặc bản ghi **chưa phân công** (để có
+     thể nhận việc).
+   - `MANAGER` thấy và sửa được bản ghi của cả phòng ban mình quản lý, hoặc chưa phân công.
+   - `ADMIN` thấy và sửa được tất cả.
+
+Mỗi bản ghi (Lead, Học viên, Hoá đơn, Chiến dịch...) đều lưu **"Người tạo"** (tài khoản đã nhập
+dữ liệu đó) để truy vết khi nhiều người cùng nhập liệu từ nhiều nguồn khác nhau — hiển thị ở cột
+cuối bảng.
+
+Tài khoản demo có sẵn sau khi seed (xem `prisma/seed.ts`), dùng để test nhanh việc phân quyền:
+
+| Vai trò | Email | Mật khẩu |
+|---------|-------|----------|
+| ADMIN   | (đặt qua `SEED_ADMIN_EMAIL`) | (đặt qua `SEED_ADMIN_PASSWORD`) |
+| MANAGER (Kinh doanh) | `kinhdoanh.demo@vitavina.com.vn` | `Manager@2026` |
+| STAFF (Du học) | `tuvan.demo@vitavina.com.vn` | `Staff@2026` |
 
 ## Chạy dự án ở máy local
 

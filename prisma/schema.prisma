@@ -135,123 +135,147 @@ model Department {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   passwordHash String
   name         String
-  role         Role       @default(STAFF)
-  active       Boolean    @default(true)
+  role         Role      @default(STAFF)
+  active       Boolean   @default(true)
   employee     Employee?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Audit trail: dữ liệu do tài khoản này nhập, dùng để đồng bộ & phân quyền theo nguồn nhập.
+  createdPartners     Partner[]              @relation("CreatedBy")
+  createdCenters      Center[]               @relation("CreatedBy")
+  createdLeads        Lead[]                 @relation("CreatedBy")
+  createdStudents     Student[]              @relation("CreatedBy")
+  createdDocuments    DocumentItem[]         @relation("CreatedBy")
+  createdTasks        Task[]                 @relation("CreatedBy")
+  createdInvoices     Invoice[]              @relation("CreatedBy")
+  createdPayments     Payment[]              @relation("CreatedBy")
+  createdDeals        Deal[]                 @relation("CreatedBy")
+  createdCampaigns    Campaign[]             @relation("CreatedBy")
+  createdInventory    InventoryItem[]        @relation("CreatedBy")
+  createdInventoryTxn InventoryTransaction[] @relation("CreatedBy")
 }
 
 model Employee {
-  id           String       @id @default(cuid())
-  userId       String?      @unique
-  user         User?        @relation(fields: [userId], references: [id])
+  id           String      @id @default(cuid())
+  userId       String?     @unique
+  user         User?       @relation(fields: [userId], references: [id])
   name         String
   email        String?
   phone        String?
   position     String?
   departmentId String?
-  department   Department?  @relation(fields: [departmentId], references: [id])
-  status       String       @default("DANG_LAM_VIEC")
+  department   Department? @relation(fields: [departmentId], references: [id])
+  status       String      @default("DANG_LAM_VIEC")
   hireDate     DateTime?
-  createdAt    DateTime     @default(now())
+  createdAt    DateTime    @default(now())
 
-  managedCenters   Center[]        @relation("CenterManager")
-  assignedLeads    Lead[]          @relation("LeadAssignee")
-  assignedStudents Student[]       @relation("StudentAssignee")
-  tasks            Task[]          @relation("TaskAssignee")
-  deals            Deal[]          @relation("DealOwner")
+  managedCenters   Center[]               @relation("CenterManager")
+  assignedLeads    Lead[]                 @relation("LeadAssignee")
+  assignedStudents Student[]              @relation("StudentAssignee")
+  tasks            Task[]                 @relation("TaskAssignee")
+  deals            Deal[]                 @relation("DealOwner")
   inventoryTxns    InventoryTransaction[] @relation("TxnEmployee")
 }
 
 // ---------- Đối tác & Trung tâm ----------
 
 model Partner {
-  id            String        @id @default(cuid())
-  name          String
-  type          PartnerType
-  country       String?
-  contactName   String?
-  contactEmail  String?
-  contactPhone  String?
-  status        PartnerStatus @default(DANG_HOP_TAC)
-  notes         String?
-  createdAt     DateTime      @default(now())
-  students      Student[]
+  id           String        @id @default(cuid())
+  name         String
+  type         PartnerType
+  country      String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  status       PartnerStatus @default(DANG_HOP_TAC)
+  notes        String?
+  createdAt    DateTime      @default(now())
+  createdById  String?
+  createdBy    User?         @relation("CreatedBy", fields: [createdById], references: [id])
+  students     Student[]
 }
 
 model Center {
-  id          String       @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
   programType ProgramType
   address     String?
   phone       String?
   managerId   String?
-  manager     Employee?    @relation("CenterManager", fields: [managerId], references: [id])
-  status      String       @default("HOAT_DONG")
-  createdAt   DateTime     @default(now())
+  manager     Employee?   @relation("CenterManager", fields: [managerId], references: [id])
+  status      String      @default("HOAT_DONG")
+  createdAt   DateTime    @default(now())
+  createdById String?
+  createdBy   User?       @relation("CreatedBy", fields: [createdById], references: [id])
   students    Student[]
 }
 
 // ---------- CRM: Leads ----------
 
 model Lead {
-  id           String      @id @default(cuid())
-  name         String
-  phone        String
-  email        String?
-  source       String?
-  programType  ProgramType
-  stage        LeadStage   @default(MOI)
-  assigneeId   String?
-  assignee     Employee?   @relation("LeadAssignee", fields: [assigneeId], references: [id])
-  notes        String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id               String      @id @default(cuid())
+  name             String
+  phone            String
+  email            String?
+  source           String?
+  programType      ProgramType
+  stage            LeadStage   @default(MOI)
+  assigneeId       String?
+  assignee         Employee?   @relation("LeadAssignee", fields: [assigneeId], references: [id])
+  notes            String?
+  createdById      String?
+  createdBy        User?       @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
   convertedStudent Student?
 }
 
 // ---------- Du học / Du học nghề: học viên & hồ sơ ----------
 
 model Student {
-  id          String         @id @default(cuid())
-  leadId      String?        @unique
-  lead        Lead?          @relation(fields: [leadId], references: [id])
+  id          String        @id @default(cuid())
+  leadId      String?       @unique
+  lead        Lead?         @relation(fields: [leadId], references: [id])
   name        String
   dob         DateTime?
   phone       String?
   email       String?
   programType ProgramType
-  status      StudentStatus  @default(TIEP_NHAN)
+  status      StudentStatus @default(TIEP_NHAN)
   partnerId   String?
-  partner     Partner?       @relation(fields: [partnerId], references: [id])
+  partner     Partner?      @relation(fields: [partnerId], references: [id])
   centerId    String?
-  center      Center?        @relation(fields: [centerId], references: [id])
+  center      Center?       @relation(fields: [centerId], references: [id])
   assigneeId  String?
-  assignee    Employee?      @relation("StudentAssignee", fields: [assigneeId], references: [id])
+  assignee    Employee?     @relation("StudentAssignee", fields: [assigneeId], references: [id])
   notes       String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdById String?
+  createdBy   User?         @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  documents   DocumentItem[]
-  invoices    Invoice[]
-  deals       Deal[]
-  tasks       Task[]
+  documents DocumentItem[]
+  invoices  Invoice[]
+  deals     Deal[]
+  tasks     Task[]
 }
 
 model DocumentItem {
-  id        String         @id @default(cuid())
-  studentId String
-  student   Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  name      String // Hộ chiếu, Bằng cấp, Học bạ, Chứng chỉ tiếng Đức...
-  status    DocumentStatus @default(THIEU)
-  dueDate   DateTime?
-  notes     String?
-  updatedAt DateTime       @updatedAt
+  id          String         @id @default(cuid())
+  studentId   String
+  student     Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  name        String // Hộ chiếu, Bằng cấp, Học bạ, Chứng chỉ tiếng Đức...
+  status      DocumentStatus @default(THIEU)
+  dueDate     DateTime?
+  notes       String?
+  createdById String?
+  createdBy   User?          @relation("CreatedBy", fields: [createdById], references: [id])
+  updatedAt   DateTime       @updatedAt
 }
 
 // ---------- Nhân sự: công việc / workflow ----------
@@ -269,6 +293,8 @@ model Task {
   status       TaskStatus   @default(CAN_LAM)
   priority     TaskPriority @default(BINH_THUONG)
   dueDate      DateTime?
+  createdById  String?
+  createdBy    User?        @relation("CreatedBy", fields: [createdById], references: [id])
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -276,56 +302,64 @@ model Task {
 // ---------- Tài chính ----------
 
 model Invoice {
-  id         String        @id @default(cuid())
-  studentId  String
-  student    Student       @relation(fields: [studentId], references: [id])
-  type       InvoiceType
-  amount     Decimal       @db.Decimal(14, 2)
-  status     InvoiceStatus @default(CHUA_THANH_TOAN)
-  issuedDate DateTime      @default(now())
-  dueDate    DateTime?
-  notes      String?
-  payments   Payment[]
+  id          String        @id @default(cuid())
+  studentId   String
+  student     Student       @relation(fields: [studentId], references: [id])
+  type        InvoiceType
+  amount      Decimal       @db.Decimal(14, 2)
+  status      InvoiceStatus @default(CHUA_THANH_TOAN)
+  issuedDate  DateTime      @default(now())
+  dueDate     DateTime?
+  notes       String?
+  createdById String?
+  createdBy   User?         @relation("CreatedBy", fields: [createdById], references: [id])
+  payments    Payment[]
 }
 
 model Payment {
-  id        String        @id @default(cuid())
-  invoiceId String
-  invoice   Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  amount    Decimal       @db.Decimal(14, 2)
-  method    PaymentMethod @default(CHUYEN_KHOAN)
-  paidAt    DateTime      @default(now())
-  notes     String?
+  id          String        @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount      Decimal       @db.Decimal(14, 2)
+  method      PaymentMethod @default(CHUYEN_KHOAN)
+  paidAt      DateTime      @default(now())
+  notes       String?
+  createdById String?
+  createdBy   User?         @relation("CreatedBy", fields: [createdById], references: [id])
 }
 
 // ---------- Kinh doanh ----------
 
 model Deal {
-  id         String    @id @default(cuid())
-  studentId  String?
-  student    Student?  @relation(fields: [studentId], references: [id])
-  ownerId    String?
-  owner      Employee? @relation("DealOwner", fields: [ownerId], references: [id])
-  value      Decimal   @db.Decimal(14, 2)
-  stage      DealStage @default(TIEM_NANG)
-  closeDate  DateTime?
-  notes      String?
-  createdAt  DateTime  @default(now())
+  id          String    @id @default(cuid())
+  studentId   String?
+  student     Student?  @relation(fields: [studentId], references: [id])
+  ownerId     String?
+  owner       Employee? @relation("DealOwner", fields: [ownerId], references: [id])
+  value       Decimal   @db.Decimal(14, 2)
+  stage       DealStage @default(TIEM_NANG)
+  closeDate   DateTime?
+  notes       String?
+  createdById String?
+  createdBy   User?     @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
 }
 
 // ---------- Marketing tự động ----------
 
 model Campaign {
-  id         String          @id @default(cuid())
-  name       String
-  channel    CampaignChannel
-  status     CampaignStatus  @default(NHAP)
-  startDate  DateTime?
-  endDate    DateTime?
-  audience   String?
-  content    String?
-  stats      Json?
-  createdAt  DateTime        @default(now())
+  id          String          @id @default(cuid())
+  name        String
+  channel     CampaignChannel
+  status      CampaignStatus  @default(NHAP)
+  startDate   DateTime?
+  endDate     DateTime?
+  audience    String?
+  content     String?
+  stats       Json?
+  createdById String?
+  createdBy   User?           @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
 }
 
 // ---------- Kho: tồn kho vật lý ----------
@@ -338,18 +372,22 @@ model InventoryItem {
   quantity     Int                    @default(0)
   minQuantity  Int                    @default(0)
   location     String?
+  createdById  String?
+  createdBy    User?                  @relation("CreatedBy", fields: [createdById], references: [id])
   createdAt    DateTime               @default(now())
   transactions InventoryTransaction[]
 }
 
 model InventoryTransaction {
-  id         String            @id @default(cuid())
-  itemId     String
-  item       InventoryItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  type       InventoryTxnType
-  quantity   Int
-  reason     String?
-  employeeId String?
-  employee   Employee?         @relation("TxnEmployee", fields: [employeeId], references: [id])
-  createdAt  DateTime          @default(now())
+  id          String           @id @default(cuid())
+  itemId      String
+  item        InventoryItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type        InventoryTxnType
+  quantity    Int
+  reason      String?
+  employeeId  String?
+  employee    Employee?        @relation("TxnEmployee", fields: [employeeId], references: [id])
+  createdById String?
+  createdBy   User?            @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
 }

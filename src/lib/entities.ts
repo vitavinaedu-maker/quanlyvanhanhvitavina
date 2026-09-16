@@ -89,6 +89,13 @@ export const ENTITIES: Record<string, EntityConfig> = {
       { key: "position", label: "Chức danh", type: "text", showInTable: true },
       { key: "departmentId", label: "Phòng ban", type: "relation", relationEntity: "departments", showInTable: true },
       {
+        key: "userId",
+        label: "Tài khoản đăng nhập",
+        type: "relation",
+        relationEntity: "users",
+        showInTable: true,
+      },
+      {
         key: "status",
         label: "Trạng thái",
         type: "select",

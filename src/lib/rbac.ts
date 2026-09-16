@@ -23,3 +23,27 @@ export function canAccessModule(role: Role, moduleKey: string) {
   if (!allowed) return true;
   return allowed.includes(role);
 }
+
+// Entity (khoá dùng trong /api/data/[entity]) -> module để kiểm tra quyền.
+// Đây là chốt chặn thật sự (API), việc ẩn menu ở Sidebar chỉ là UX.
+export const ENTITY_MODULE: Record<string, string> = {
+  departments: "cai-dat",
+  users: "cai-dat",
+  employees: "nhan-su",
+  partners: "doi-tac",
+  centers: "du-hoc",
+  leads: "crm",
+  students: "du-hoc",
+  documentItems: "kho",
+  tasks: "nhan-su",
+  invoices: "tai-chinh",
+  payments: "tai-chinh",
+  deals: "kinh-doanh",
+  campaigns: "marketing",
+  inventoryItems: "kho",
+  inventoryTransactions: "kho",
+};
+
+export function moduleForEntity(entityKey: string): string | undefined {
+  return ENTITY_MODULE[entityKey];
+}

@@ -54,8 +54,35 @@ async function main() {
     },
   });
 
+  // Tài khoản demo có đăng nhập để test đa người dùng + phân quyền theo dữ liệu (RBAC theo hàng).
+  const staffPasswordHash = await bcrypt.hash("Staff@2026", 10);
+  const managerPasswordHash = await bcrypt.hash("Manager@2026", 10);
+
+  const staffUser = await prisma.user.upsert({
+    where: { email: "tuvan.demo@vitavina.com.vn" },
+    update: {},
+    create: {
+      email: "tuvan.demo@vitavina.com.vn",
+      passwordHash: staffPasswordHash,
+      name: "Nguyễn Thị Tư Vấn",
+      role: "STAFF",
+    },
+  });
+
+  const managerUser = await prisma.user.upsert({
+    where: { email: "kinhdoanh.demo@vitavina.com.vn" },
+    update: {},
+    create: {
+      email: "kinhdoanh.demo@vitavina.com.vn",
+      passwordHash: managerPasswordHash,
+      name: "Trần Văn Kinh Doanh",
+      role: "MANAGER",
+    },
+  });
+
   const tuVan = await prisma.employee.create({
     data: {
+      userId: staffUser.id,
       name: "Nguyễn Thị Tư Vấn",
       email: "tuvan.demo@vitavina.com.vn",
       phone: "0900000001",
@@ -66,10 +93,11 @@ async function main() {
 
   const saleNghe = await prisma.employee.create({
     data: {
+      userId: managerUser.id,
       name: "Trần Văn Kinh Doanh",
       email: "kinhdoanh.demo@vitavina.com.vn",
       phone: "0900000002",
-      position: "Chuyên viên kinh doanh",
+      position: "Trưởng nhóm kinh doanh",
       departmentId: departments.KINH_DOANH.id,
     },
   });
@@ -199,6 +227,8 @@ async function main() {
 
   console.log("Seed hoàn tất.");
   console.log(`Đăng nhập admin: ${adminEmail} / ${adminPassword}`);
+  console.log("Đăng nhập demo MANAGER (Kinh doanh): kinhdoanh.demo@vitavina.com.vn / Manager@2026");
+  console.log("Đăng nhập demo STAFF (Du học): tuvan.demo@vitavina.com.vn / Staff@2026");
   console.log("*** Hãy đổi mật khẩu admin ngay sau khi đăng nhập lần đầu. ***");
 }
 

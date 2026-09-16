@@ -21,18 +21,39 @@ const DELEGATES: Record<string, any> = {
   inventoryTransactions: prisma.inventoryTransaction,
 };
 
+// Entity nào có audit trail "người tạo" (createdById -> User).
+export const CREATED_BY_ENTITIES = new Set([
+  "partners",
+  "centers",
+  "leads",
+  "students",
+  "documentItems",
+  "tasks",
+  "invoices",
+  "payments",
+  "deals",
+  "campaigns",
+  "inventoryItems",
+  "inventoryTransactions",
+]);
+
+const CREATED_BY_SELECT = { createdBy: { select: { id: true, name: true, email: true } } };
+
 // Include quan hệ trực tiếp để hiển thị nhãn trong bảng (client tự format).
 const INCLUDES: Record<string, any> = {
-  employees: { department: true },
-  centers: { manager: true },
-  leads: { assignee: true },
-  students: { partner: true, center: true, assignee: true, lead: true },
-  documentItems: { student: true },
-  tasks: { department: true, assignee: true, student: true },
-  invoices: { student: true, payments: true },
-  payments: { invoice: { include: { student: true } } },
-  deals: { student: true, owner: true },
-  inventoryTransactions: { item: true, employee: true },
+  employees: { department: true, user: { select: { id: true, name: true, email: true, role: true } } },
+  partners: { ...CREATED_BY_SELECT },
+  centers: { manager: true, ...CREATED_BY_SELECT },
+  leads: { assignee: true, ...CREATED_BY_SELECT },
+  students: { partner: true, center: true, assignee: true, lead: true, ...CREATED_BY_SELECT },
+  documentItems: { student: true, ...CREATED_BY_SELECT },
+  tasks: { department: true, assignee: true, student: true, ...CREATED_BY_SELECT },
+  invoices: { student: true, payments: true, ...CREATED_BY_SELECT },
+  payments: { invoice: { include: { student: true } }, ...CREATED_BY_SELECT },
+  deals: { student: true, owner: true, ...CREATED_BY_SELECT },
+  campaigns: { ...CREATED_BY_SELECT },
+  inventoryItems: { ...CREATED_BY_SELECT },
+  inventoryTransactions: { item: true, employee: true, ...CREATED_BY_SELECT },
 };
 
 export function getDelegate(entityKey: string) {
